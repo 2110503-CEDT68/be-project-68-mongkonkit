@@ -1,78 +1,120 @@
 const Booking = require('../models/Booking.js');
 const Car = require('../models/Car');
-//const { param } = require('../routes/hospitals');
 
-// @desc        Get all hospitals
-// @route       GET /api/v1/hospitals
-// @access      Public
-exports.getCars=async (req,res,next)=>{
-    let query;
 
-    const reqQuery={...req.query};
-    const removeFields=['select','sort','page','limit'];
+exports.getCars = async (req, res, next) => {
+  let query;
 
-    removeFields.forEach(param=>delete reqQuery[param]);
-    console.log(reqQuery);
+  const reqQuery = { ...req.query };
 
-    let queryStr=JSON.stringify(reqQuery);
-    queryStr=queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g,match=>`$${match}`);
+  // fields ที่ไม่เอาไป query DB
+  const removeFields = ['select', 'sort', 'page', 'limit', 'startRent', 'endRent'];
+  removeFields.forEach(param => delete reqQuery[param]);
 
-    query=Car.find(JSON.parse(queryStr)).populate('appointments');
-    
-    if (req.query.select){
-        const fields=req.query.select.split(',').join(' ');
-        query=query.select(fields);
+  // advanced filter
+  let queryStr = JSON.stringify(reqQuery);
+  queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
+
+  let mongoQuery = JSON.parse(queryStr);
+
+  /* =====================================================
+     FILTER รถว่างตามช่วงเวลา
+  ====================================================== */
+  const { startRent, endRent } = req.query;
+
+  if (startRent && endRent) {
+    const start = new Date(decodeURIComponent(startRent));
+    const end   = new Date(decodeURIComponent(endRent));
+
+
+    // เช็ก format วันที่ผิด (Invalid Date)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid startRent or endRent format'
+      });
     }
 
-    if (req.query.sort){
-        const sortBy=req.query.sort.split(',').join(' ');
-        query=query.sort(sortBy);
+    if (end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: 'endRent must be after startRent'
+      });
     }
-    else {
-        query=query.sort('-createdAt');
+
+    // หา booking ที่ "เวลาซ้อน"
+    const bookedCars = await Booking.find({
+      status: 'renting',
+      startRent: { $lt: end },
+      endRent:   { $gt: start }
+    }).select('car');
+
+    const bookedCarIds = bookedCars.map(b => b.car);
+
+    // เอารถที่ถูกจองแล้วออกจากผลลัพธ์
+    mongoQuery._id = { $nin: bookedCarIds };
+  }
+
+  // สร้าง query รถ
+  query = Car.find(mongoQuery).populate('bookings');
+
+  /* ================================
+     SELECT
+  ================================= */
+  if (req.query.select) {
+    const fields = req.query.select.split(',').join(' ');
+    query = query.select(fields);
+  }
+
+  /* ================================
+     SORT
+  ================================= */
+  if (req.query.sort) {
+    const sortBy = req.query.sort.split(',').join(' ');
+    query = query.sort(sortBy);
+  } else {
+    query = query.sort('-createdAt');
+  }
+
+  /* ================================
+     PAGINATION
+  ================================= */
+  const page  = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 25;
+  const startIndex = (page - 1) * limit;
+  const endIndex   = page * limit;
+
+  const total = await Car.countDocuments(mongoQuery);
+
+  query = query.skip(startIndex).limit(limit);
+
+  try {
+    const cars = await query;
+
+    const pagination = {};
+    if (endIndex < total) {
+      pagination.next = { page: page + 1, limit };
     }
-    
-    // Pagination
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 25;
-
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-
-    const total = await Car.countDocuments();
-
-    query = query.skip(startIndex).limit(limit);
-
-    try{
-        const cars = await query;
-        
-        const pagination = {};
-
-        // Next page
-        if (endIndex < total) {
-            pagination.next = {
-                page: page + 1,
-                limit
-            };
-        }
-
-        // Previous page
-        if (startIndex > 0) {
-            pagination.prev = {
-                page: page - 1,
-                limit
-            };
-        }
-
-        res.status(200).json({success:true,count:cars.length, pagination, data:cars});
-    } catch(err){
-        res.status(400).json({success:false});
+    if (startIndex > 0) {
+      pagination.prev = { page: page - 1, limit };
     }
+
+    res.status(200).json({
+      success: true,
+      count: cars.length,
+      pagination,
+      data: cars
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ success: false });
+  }
 };
 
-// @desc        Get single hospitals
-// @route       GET /api/v1/hospitals/:id
-// @access      Public
+
+
+
 exports.getCar=async (req,res,next)=>{
     try{
         const car = await Car.findById(req.params.id);
@@ -85,9 +127,8 @@ exports.getCar=async (req,res,next)=>{
     }
 };
 
-// @desc        Create a hospital
-// @route       POST /api/v1/hospitals
-// @access      Private
+
+
 exports.createCar = async (req, res, next) => {
     const car = await Car.create(req.body);
 
@@ -97,9 +138,8 @@ exports.createCar = async (req, res, next) => {
     });
 };
 
-// @desc        Update single hospitals
-// @route       PUT /api/v1/hospitals/:id
-// @access      Private
+
+
 exports.updateCar= async(req,res,next)=>{
     try{
         const car = await Car.findByIdAndUpdate(req.params.id, req.body, {
@@ -115,9 +155,8 @@ exports.updateCar= async(req,res,next)=>{
     }
 };
 
-// @desc        Delete single hospitals
-// @route       DELETE /api/v1/hospitals/:id
-// @access      Private
+
+
 exports.deleteCar=async (req,res,next)=>{
     try{
         const car = await Car.findById(req.params.id);

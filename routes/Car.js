@@ -1,16 +1,16 @@
 const express = require('express');
-const {getHospitals,getHospital,createHospital,updateHospital,deleteHospital} = require('../controllers/Car');
+const {getCars,getCar,createCar,updateCar,deleteCar} = require('../controllers/Car');
 
-const appointmentRouter=require('./appointments');
+const bookingRouter=require('./bookings');
 
 const router = express.Router();
 
 const {protect,authorize} = require('../middleware/auth');
 
-router.use('/:hospitalId/appointments/',appointmentRouter);
+router.use('/:carId/booking',bookingRouter);
 
-router.route('/').get(getCars).post(protect,authorize('admin'),createHospital);
-router.route('/:id').get(getHospital).put(protect,authorize('admin'),updateHospital).delete(protect,authorize('admin'),deleteHospital);
+router.route('/').get(getCars).post(protect,authorize('admin'),createCar);
+router.route('/:id').get(getCar).put(protect,authorize('admin'),updateCar).delete(protect,authorize('admin'),deleteCar);
 
 /**
  * @swagger
