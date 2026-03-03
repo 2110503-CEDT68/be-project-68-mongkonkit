@@ -1,0 +1,19 @@
+@startuml
+left to right direction
+actor User
+actor Admin
+
+rectangle "Backend API System" {
+  User -- (Register)
+  User -- (Login)
+  User -- (View Own Data)
+  User -- (Create Booking)
+
+  Admin -- (Manage Users)
+  Admin -- (Manage Cars)
+  Admin -- (View All Bookings)
+
+  (Login) --> (Get JWT)
+}
+
+@enduml

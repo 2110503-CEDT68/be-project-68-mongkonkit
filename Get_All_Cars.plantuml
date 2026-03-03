@@ -1,0 +1,14 @@
+@startuml
+actor User
+participant "Car Route" as Route
+participant "Auth Middleware" as Auth
+participant "Car Controller" as Controller
+participant "Car Model" as Model
+
+User -> Route : GET /cars
+Route -> Controller : getCars()
+Controller -> Model : find()
+Model --> Controller : cars[]
+Controller --> User : 200 OK (cars)
+
+@enduml

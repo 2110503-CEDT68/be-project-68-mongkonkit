@@ -1,0 +1,19 @@
+@startuml
+actor Admin
+participant "Car Route" as Route
+participant "Auth Middleware" as Auth
+participant "Car Controller" as Controller
+participant "Car Model" as Model
+
+Admin -> Route : DELETE /cars/{id}
+Route -> Auth : protect()
+Auth -> Auth : verify JWT
+Auth -> Auth : authorize('admin')
+Auth --> Route : next()
+
+Route -> Controller : deleteCar(id)
+Controller -> Model : findByIdAndDelete(id)
+Model --> Controller : deletedCar
+Controller --> Admin : 200 OK (success)
+
+@enduml

@@ -104,6 +104,36 @@ exports.addBooking = async (req, res) => {
         message: `User ${req.user.id} has already rent 3 cars`
       });
     }
+    const hours = (req.body.endRent - req.body.startRent) / (1000 * 60 * 60);
+
+    if (hours <= 0) {
+     return res.status(400).json({
+       success: false,
+       message: 'Invalid rent duration'
+     });
+    }
+
+    const overlappingBooking = await Booking.findOne({
+      car: req.params.carId,
+      status: { $in: ['pending', 'confirmed', 'returned'] },
+      $or: [
+        {
+          startRent: { $lt: req.body.endRent },
+          endRent: { $gt: req.body.startRent }
+        }
+      ]
+    });
+
+    if (overlappingBooking) {
+      return res.status(400).json({
+        success: false,
+        message: 'Car is already booked in this time range'
+      });
+    }
+
+    // คำนวณราคา
+    req.body.totalPrice = hours * car.pricePerHour;
+
 
     const booking = await Booking.create(req.body);
 

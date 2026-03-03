@@ -15,6 +15,23 @@ const CarSchema = new mongoose.Schema({
     tel:{
         type: String,
         required: [true,'Please add a rental car provider telephone number']
+    },
+    pricePerHour:{
+        type: Number,
+        required: true,
+        min: 0
+    },
+
+    averageRating:{
+        type: Number,
+        min: 0,
+        max: 5,
+        default: 0
+    },
+
+    ratingCount:{
+        type: Number,
+        default: 0
     }
 },{
     toJSON: {virtuals:true},
@@ -23,6 +40,13 @@ const CarSchema = new mongoose.Schema({
 
 CarSchema.virtual('bookings',{
     ref: 'Booking',
+    localField: '_id',
+    foreignField: 'car',
+    justOne: false
+});
+
+CarSchema.virtual('ratings',{
+    ref: 'Rating',
     localField: '_id',
     foreignField: 'car',
     justOne: false

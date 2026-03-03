@@ -1,0 +1,13 @@
+@startuml
+actor User
+participant "Car Route" as Route
+participant "Car Controller" as Controller
+participant "Car Model" as Model
+
+User -> Route : GET /cars/{id}
+Route -> Controller : getCar(id)
+Controller -> Model : findById(id)
+Model --> Controller : car
+Controller --> User : 200 OK (car)
+
+@enduml

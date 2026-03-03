@@ -9,6 +9,11 @@ const {protect,authorize} = require('../middleware/auth');
 
 router.use('/:carId/booking',bookingRouter);
 
+const ratingRouter = require('./ratings');
+
+router.use('/:carId/ratings', ratingRouter);
+
+
 router.route('/').get(getCars).post(protect,authorize('admin'),createCar);
 router.route('/:id').get(getCar).put(protect,authorize('admin'),updateCar).delete(protect,authorize('admin'),deleteCar);
 

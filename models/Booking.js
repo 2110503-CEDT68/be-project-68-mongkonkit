@@ -27,20 +27,24 @@ const BookingSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    totalPrice:{
+    type: Number,
+    required: true
+}
 });
 
 /* ป้องกัน endRent < startRent */
+
 BookingSchema.pre('save', async function () {
 
     // 1) endRent ต้องมากกว่า startRent
     if (this.endRent <= this.startRent) {
         throw new Error('End rent time must be after start rent time');
     }
-
     // 2) ตรวจสอบการจองซ้อน (เฉพาะตอนสร้างใหม่)
     if (!this.isNew) return;
-
+    
     const overlap = await this.constructor.findOne({
         car: this.car,
         status: 'renting',
